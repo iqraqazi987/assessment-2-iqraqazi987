@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Send a question about beginner-friendly trails in Alberta.">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Trail Enquiry • Explore Alberta Trails</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="script.js"></script>
+</head>
+<body>
+  <main id="main" class="page">
+    <section class="form-card" aria-labelledby="page-title">
+      <p class="eyebrow">EXPLORE ALBERTA TRAILS</p>
+      <h1 id="page-title">Trail Enquiry Form</h1>
+      <p class="intro">Have a question about a beginner-friendly trail? Send us a message and we’ll help you plan your next outing.</p>
+
+      <p class="required-note"><span aria-hidden="true">*</span> Required fields</p>
+
+      <form id="trail-form" novalidate>
+        <div class="field">
+          <label for="name">Full name <span aria-hidden="true">*</span></label>
+          <input id="name" name="name" type="text" autocomplete="name"
+                 required maxlength="100" aria-describedby="name-error"
+                 placeholder="e.g., Alex Morgan">
+          <p class="error" id="name-error"></p>
+        </div>
+
+        <div class="field">
+          <label for="email">Email address <span aria-hidden="true">*</span></label>
+          <input id="email" name="email" type="email" autocomplete="email"
+                 inputmode="email" required maxlength="254"
+                 aria-describedby="email-error" placeholder="you@example.com">
+          <p class="error" id="email-error"></p>
+        </div>
+
+        <div class="field">
+          <label for="trail-length">Preferred trail length</label>
+          <select id="trail-length" name="trailLength">
+            <option value="">Choose a distance (optional)</option>
+            <option value="Under 3 km">Under 3 km</option>
+            <option value="3–5 km">3–5 km</option>
+            <option value="5–10 km">5–10 km</option>
+            <option value="Over 10 km">Over 10 km</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="message">Your question <span aria-hidden="true">*</span></label>
+          <textarea id="message" name="message" rows="5" required maxlength="500"
+                    aria-describedby="message-help message-error"
+                    placeholder="Tell us what you’d like to know…"></textarea>
+          <div class="message-meta">
+            <p id="message-help" class="help">Maximum 500 characters.</p>
+            <p id="char-count" class="help" aria-live="off">0 / 500</p>
+          </div>
+          <p class="error" id="message-error"></p>
+        </div>
+
+        <div id="form-status" class="status" role="status" aria-live="polite" tabindex="-1"></div>
+
+        <button type="submit">Submit enquiry</button>
+        <p class="privacy-note">This demonstration validates your details in your browser. It does not send an email or store your enquiry.</p>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
