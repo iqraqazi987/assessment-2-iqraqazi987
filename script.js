@@ -1,114 +1,118 @@
-const form = document.querySelector("#trail-form");
-const nameInput = document.querySelector("#name");
-const emailInput = document.querySelector("#email");
-const messageInput = document.querySelector("#message");
-const charCount = document.querySelector("#char-count");
-const formStatus = document.querySelector("#form-status");
+const form = document.querySelector("#enquiry-form");
 
-const fields = [
-  { input: nameInput, error: document.querySelector("#name-error"), key: "name" },
-  { input: emailInput, error: document.querySelector("#email-error"), key: "email" },
-  { input: messageInput, error: document.querySelector("#message-error"), key: "message" }
-];
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const debounceTimers = new Map();
-
-function sanitizeText(value) {
-  // Normalize and trim input; remove unsafe control characters.
-  // Never insert user input with innerHTML. Use textContent for any future display.
-  return value.normalize("NFC").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim();
+if (!(form instanceof HTMLFormElement)) {
+  throw new Error("The trail enquiry form could not be found.");
 }
 
-function validateField(input) {
-  const value = sanitizeText(input.value);
-  let message = "";
+const fields = [...form.querySelectorAll("input, textarea")];
+const status = form.querySelector("#form-status");
+const validationTimers = new WeakMap();
+const touchedFields = new WeakSet();
+let hasSubmitted = false;
 
-  if (input === nameInput && value.length === 0) {
-    message = "Please enter your name.";
-  } else if (input === emailInput && value.length === 0) {
-    message = "Please enter your email address.";
-  } else if (input === emailInput && !emailPattern.test(value)) {
-    message = "Enter a valid email address, such as name@example.com.";
-  } else if (input === messageInput && value.length === 0) {
-    message = "Please enter your question.";
-  } else if (input === messageInput && value.length > 500) {
-    message = "Your message must be 500 characters or fewer.";
+if (!(status instanceof HTMLElement)) {
+  throw new Error("The form status region could not be found.");
+}
+
+function getError(field) {
+  const value = field.value.trim();
+
+  if (field.name === "name" && value === "") {
+    return "Enter your name.";
   }
 
-  const errorElement = document.querySelector(`#${input.id}-error`);
-  input.setAttribute("aria-invalid", String(Boolean(message)));
-  errorElement.textContent = message;
-  return !message;
-}
-
-function debounceValidation(input) {
-  const existingTimer = debounceTimers.get(input);
-  if (existingTimer) {
-    clearTimeout(existingTimer);
-  }
-
-  const timer = setTimeout(() => {
-    validateField(input);
-    debounceTimers.delete(input);
-  }, 300);
-
-  debounceTimers.set(input, timer);
-}
-
-fields.forEach(({ input }) => {
-  input.addEventListener("input", () => {
-    debounceValidation(input);
-    formStatus.textContent = "";
-    formStatus.className = "status";
-  });
-
-  input.addEventListener("blur", () => {
-    const timer = debounceTimers.get(input);
-    if (timer) {
-      clearTimeout(timer);
-      debounceTimers.delete(input);
+  if (field.name === "email") {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (value === "") {
+      return "Enter your email address.";
     }
-    validateField(input);
-  });
-});
+    if (!emailPattern.test(value)) {
+      return "Enter an email address in the format name@example.com.";
+    }
+  }
 
-messageInput.addEventListener("input", () => {
-  charCount.textContent = `${messageInput.value.length} / 500`;
+  if (field.name === "message") {
+    if (value === "") {
+      return "Enter a message.";
+    }
+    if (field.value.length > 500) {
+      return "Keep your message to 500 characters or fewer.";
+    }
+  }
+
+  return "";
+}
+
+function validateField(field) {
+  const error = getError(field);
+  const errorElement = form.querySelector(`#${field.id}-error`);
+
+  field.setAttribute("aria-invalid", String(Boolean(error)));
+  if (errorElement) {
+    errorElement.textContent = error;
+  }
+  return error;
+}
+
+function validateTouchedFields() {
+  const errors = [];
+  for (const field of fields) {
+    if (touchedFields.has(field) || hasSubmitted) {
+      const error = validateField(field);
+      if (error) {
+        errors.push(error);
+      }
+    }
+  }
+
+  status.textContent = errors.length
+    ? "Please correct the highlighted fields."
+    : "";
+}
+
+form.addEventListener("input", (event) => {
+  const field = event.target;
+  if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement)) {
+    return;
+  }
+
+  touchedFields.add(field);
+  window.clearTimeout(validationTimers.get(field));
+  validationTimers.set(field, window.setTimeout(() => {
+    validateField(field);
+    validateTouchedFields();
+  }, 300));
 });
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+  hasSubmitted = true;
 
-  // Cancel pending debounced validations so submit validation is immediate.
-  for (const timer of debounceTimers.values()) {
-    clearTimeout(timer);
+  for (const field of fields) {
+    window.clearTimeout(validationTimers.get(field));
+    validateField(field);
   }
-  debounceTimers.clear();
+  const firstInvalidField = fields.find((field) => field.getAttribute("aria-invalid") === "true");
 
-  const results = fields.map(({ input }) => validateField(input));
-  const isValid = results.every(Boolean);
-
-  if (!isValid) {
-    formStatus.textContent = "Please correct the errors below and submit the form again.";
-    formStatus.className = "status failure";
-    const firstInvalid = fields.find(({ input }) => input.getAttribute("aria-invalid") === "true");
-    firstInvalid?.input.focus();
+  if (firstInvalidField) {
+    status.textContent = "Please correct the highlighted fields before sending your enquiry.";
+    firstInvalidField.focus();
     return;
   }
 
-  // Build a clean data object for the console demonstration.
-  const rawData = Object.fromEntries(new FormData(form).entries());
-  const data = Object.fromEntries(
-    Object.entries(rawData).map(([key, value]) => [
-      key,
-      typeof value === "string" ? sanitizeText(value) : value
-    ])
-  );
+  const data = Object.fromEntries(new FormData(form).entries());
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === "string") {
+      data[key] = value.replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character]);
+    }
+  }
 
   console.log(JSON.stringify(data, null, 2));
-
-  formStatus.textContent = "Your enquiry passed validation. The form data was printed to the browser console; no email was sent.";
-  formStatus.className = "status success";
-  formStatus.focus();
+  status.textContent = "Thanks! Your enquiry is valid and ready to send.";
 });
